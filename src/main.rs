@@ -1,20 +1,23 @@
 #[allow(unused_imports)]
 use chrono::{offset::Utc, DateTime, Timelike};
 
+use rand::Rng;
 use std::process;
 
 use iced::{
-    canvas::{self, Cache, Canvas, Cursor, Fill, Geometry, Path},
+    canvas::{self, Cache, Canvas, Cursor, Geometry, Path},
     executor, time,
     window::Settings as WindowSettings,
-    Application, Color, Column, Command, Container, Element, Length, Rectangle, Row, Settings,
-    Subscription,
+    Application, Color, Column, Command, Container, Element, Length, Point, Rectangle, Row,
+    Settings, Subscription,
 };
 use iced_native::event::Event;
 use iced_native::keyboard::Event as KeyboardEvent;
 
 const WIDTH: u32 = 400;
 const HEIGHT: u32 = 400;
+const METABALL_COUNT: usize = 2;
+const METABALL_RADIUS: f32 = 10.0;
 
 pub fn main() -> iced::Result {
     Visualizer::run(Settings {
@@ -29,6 +32,13 @@ pub fn main() -> iced::Result {
 
 struct Visualizer {
     clock: Cache,
+    metaballs: Vec<MetaBall>,
+}
+
+struct MetaBall {
+    x: f32,
+    y: f32,
+    r: f32,
 }
 
 #[derive(Debug, Clone)]
@@ -43,16 +53,28 @@ impl Application for Visualizer {
     type Flags = ();
 
     fn new(_flags: ()) -> (Self, Command<Message>) {
+        let mut rng = rand::thread_rng();
+        let half_radius: f32 = METABALL_RADIUS / 2.0;
+        let mut metaballs: Vec<MetaBall> = Vec::with_capacity(METABALL_COUNT);
+
+        for _ in 0..METABALL_COUNT {
+            metaballs.push(MetaBall {
+                x: rng.gen_range(half_radius..((WIDTH as f32) - half_radius)),
+                y: rng.gen_range(half_radius..((HEIGHT as f32) - half_radius)),
+                r: METABALL_RADIUS,
+            });
+        }
         (
             Visualizer {
                 clock: Default::default(),
+                metaballs,
             },
             Command::none(),
         )
     }
 
     fn title(&self) -> String {
-        String::from("Sort-rs")
+        String::from("RUSTY-MetaBalls")
     }
 
     fn update(&mut self, message: Message) -> Command<Message> {
@@ -110,10 +132,13 @@ impl canvas::Program<Message> for Visualizer {
     fn draw(&self, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
         let program = self.clock.draw(bounds.size(), |frame| {
             // We create a `Path` representing a simple circle
-            let circle = Path::new(|p| p.circle(frame.center(), 10.0));
+            for metaball in &self.metaballs {
+                let center = Point::new(metaball.x, metaball.y);
+                let circle = Path::new(|p| p.circle(center, metaball.r));
+                frame.fill(&circle, Color::BLACK);
+            }
 
             // And fill it with some color
-            frame.fill(&circle, Color::BLACK);
 
             // frame.fill_rectangle(
             //     Point::new(0f32, 0f32),
