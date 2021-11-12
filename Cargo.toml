@@ -1,0 +1,16 @@
+[package]
+name = "rusty-metaballs"
+authors = ["Viktor Nagy <viktor.nagy1995@gmail.com>"]
+version = "0.1.0"
+edition = "2018"
+
+[dependencies]
+chrono = "0.4"
+rand = "0.8.3"
+
+[dependencies.iced]
+version = "0.2.0"
+features = ["canvas", "tokio", "debug"]
+
+[dependencies.iced_native]
+version = "0.3.0"
