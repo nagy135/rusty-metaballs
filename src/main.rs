@@ -5,11 +5,11 @@ use rand::Rng;
 use std::process;
 
 use iced::{
-    canvas::{self, Cache, Canvas, Cursor, Geometry, Path},
+    canvas::{self, Cache, Canvas, Cursor, Geometry, Path, Stroke},
     executor, time,
     window::Settings as WindowSettings,
-    Application, Color, Column, Command, Container, Element, Length, Point, Rectangle, Row,
-    Settings, Subscription,
+    Application, Column, Command, Container, Element, Length, Point, Rectangle, Row, Settings,
+    Subscription,
 };
 use iced_native::event::Event;
 use iced_native::keyboard::Event as KeyboardEvent;
@@ -38,6 +38,8 @@ struct Visualizer {
 struct MetaBall {
     x: f32,
     y: f32,
+    vx: f32,
+    vy: f32,
     r: f32,
 }
 
@@ -61,6 +63,8 @@ impl Application for Visualizer {
             metaballs.push(MetaBall {
                 x: rng.gen_range(half_radius..((WIDTH as f32) - half_radius)),
                 y: rng.gen_range(half_radius..((HEIGHT as f32) - half_radius)),
+                vx: rng.gen_range(-1..1) as f32,
+                vy: rng.gen_range(-1..1) as f32,
                 r: METABALL_RADIUS,
             });
         }
@@ -80,6 +84,7 @@ impl Application for Visualizer {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Tick(local_time) => {
+                let now = Utc::now().timestamp();
                 let _now = local_time;
                 self.tick();
                 self.clock.clear();
@@ -126,7 +131,37 @@ impl Application for Visualizer {
 }
 
 impl Visualizer {
-    fn tick(&mut self) {}
+    fn tick(&mut self) {
+        for metaball in self.metaballs.iter_mut() {
+            let vx: f32;
+            if metaball.x < 0.0 || metaball.x > WIDTH as f32 {
+                vx = -metaball.vx;
+            } else {
+                vx = metaball.vx;
+            }
+            let vy: f32;
+            if metaball.y < 0.0 || metaball.y > WIDTH as f32 {
+                vy = -metaball.vy;
+            } else {
+                vy = metaball.vy;
+            }
+
+            metaball.x += vx;
+            metaball.y += vy;
+
+            metaball.vx = vx;
+            metaball.vy = vy;
+
+            let mut bx: Vec<f32> = Vec::with_capacity(WIDTH as usize);
+            for (i, elem) in bx.iter_mut().enumerate() {
+                *elem = ((metaball.x - i as f32) * (metaball.x - i as f32)).sqrt();
+            }
+            let mut by: Vec<f32> = Vec::with_capacity(HEIGHT as usize);
+            for (i, elem) in by.iter_mut().enumerate() {
+                *elem = ((metaball.y - i as f32) * (metaball.y - i as f32)).sqrt();
+            }
+        }
+    }
 }
 impl canvas::Program<Message> for Visualizer {
     fn draw(&self, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
@@ -135,7 +170,7 @@ impl canvas::Program<Message> for Visualizer {
             for metaball in &self.metaballs {
                 let center = Point::new(metaball.x, metaball.y);
                 let circle = Path::new(|p| p.circle(center, metaball.r));
-                frame.fill(&circle, Color::BLACK);
+                frame.stroke(&circle, Stroke::default());
             }
 
             // And fill it with some color
