@@ -8,8 +8,8 @@ use iced::{
     canvas::{self, Cache, Canvas, Cursor, Geometry, Path, Stroke},
     executor, time,
     window::Settings as WindowSettings,
-    Application, Column, Command, Container, Element, Length, Point, Rectangle, Row, Settings,
-    Subscription,
+    Application, Color, Column, Command, Container, Element, Length, Point, Rectangle, Row,
+    Settings, Size, Subscription,
 };
 use iced_native::event::Event;
 use iced_native::keyboard::Event as KeyboardEvent;
@@ -84,7 +84,7 @@ impl Application for Visualizer {
     fn update(&mut self, message: Message) -> Command<Message> {
         match message {
             Message::Tick(local_time) => {
-                let now = Utc::now().timestamp();
+                // let now = Utc::now().timestamp();
                 let _now = local_time;
                 self.tick();
                 self.clock.clear();
@@ -151,26 +151,52 @@ impl Visualizer {
 
             metaball.vx = vx;
             metaball.vy = vy;
-
-            let mut bx: Vec<f32> = Vec::with_capacity(WIDTH as usize);
-            for (i, elem) in bx.iter_mut().enumerate() {
-                *elem = ((metaball.x - i as f32) * (metaball.x - i as f32)).sqrt();
-            }
-            let mut by: Vec<f32> = Vec::with_capacity(HEIGHT as usize);
-            for (i, elem) in by.iter_mut().enumerate() {
-                *elem = ((metaball.y - i as f32) * (metaball.y - i as f32)).sqrt();
-            }
         }
     }
 }
 impl canvas::Program<Message> for Visualizer {
     fn draw(&self, bounds: Rectangle, _cursor: Cursor) -> Vec<Geometry> {
+        println!("draw");
         let program = self.clock.draw(bounds.size(), |frame| {
             // We create a `Path` representing a simple circle
+            let mut bxby: Vec<(Vec<f32>, Vec<f32>)> = Vec::with_capacity(self.metaballs.len());
             for metaball in &self.metaballs {
+                let mut bx: Vec<f32> = Vec::with_capacity(WIDTH as usize);
+                for i in 0..WIDTH {
+                    bx.insert(
+                        i as usize,
+                        ((metaball.x - i as f32) * (metaball.x - i as f32)).sqrt(),
+                    );
+                }
+                let mut by: Vec<f32> = Vec::with_capacity(HEIGHT as usize);
+                for i in 0..HEIGHT {
+                    by.insert(
+                        i as usize,
+                        ((metaball.y - i as f32) * (metaball.y - i as f32)).sqrt(),
+                    );
+                }
+
+                bxby.push((bx, by));
+
                 let center = Point::new(metaball.x, metaball.y);
                 let circle = Path::new(|p| p.circle(center, metaball.r));
                 frame.stroke(&circle, Stroke::default());
+            }
+
+            for y in 0..HEIGHT {
+                for x in 0..WIDTH {
+                    let mut m = 1.0;
+                    for i in 0..self.metaballs.len() {
+                        let bx = &bxby[i].0;
+                        let by = &bxby[i].1;
+                        m += 20000.0 / (bx[x as usize] + by[y as usize] + 1.0);
+                    }
+                    frame.fill_rectangle(
+                        Point::new(0f32, 0f32),
+                        Size::new(WIDTH as f32, HEIGHT as f32),
+                        Color::from_rgba(0.0, 0.0, 0.0, m % 255.0),
+                    );
+                }
             }
 
             // And fill it with some color
